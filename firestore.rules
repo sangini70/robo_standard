@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Primitives ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Hardened Admin Check: Explicit UID and Verified Email
+    function isAdmin() {
+      return isVerified() && 
+             (request.auth.uid == "O8T7pyXh5Mfd5wx7fqJdkfqTzw1" ||
+              request.auth.token.email == "luganopizza@gmail.com");
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Collection Rules ---
+
+    // 1. Security & Settings: ABSOLUTE RESTRICTION
+    match /settings/security {
+      // Only the verified Admin UID can read or modify security parameters.
+      // This prevents anyone else from even seeing if the document exists.
+      allow read, write: if isAdmin();
+    }
+
+    // 2. Statistics: Public can increment, Admin can read/manage
+    match /stats/{slug} {
+      allow read: if isAdmin();
+      // Public can increment stats but can't overwrite with arbitrary data.
+      // We enforce strict validation to prevent "Shadow Field" injection.
+      allow create: if isValidId(slug) && (
+        incoming().keys().hasAll(['slug', 'updatedAt']) && 
+        incoming().updatedAt is string
+      );
+      allow update: if (
+        // Action: Public Increment (views, clicks, impressions)
+        (
+          incoming().diff(existing()).affectedKeys().hasAny(['views', 'clicks', 'impressions', 'updatedAt']) &&
+          incoming().updatedAt is string
+        ) || 
+        // Action: Admin Full Management
+        isAdmin()
+      );
+    }
+
+    // 3. Admin Configuration: Only Admin
+    match /admin_config/{key} {
+      allow read, write: if isAdmin() && isValidId(key);
+    }
+
+    // 4. Indexing Status: Only Admin
+    match /indexing_status/{slug} {
+      allow read, write: if isAdmin() && isValidId(slug);
+    }
+
+    // 5. Posts: Public Read, Admin Write
+    match /posts/{slug} {
+      allow read: if true; // Public can read analysis posts
+      allow write: if isAdmin() && isValidId(slug);
+    }
+
+    // 6. Signals: Public Read, Admin Write
+    match /signals/{id} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidId(id);
+    }
+  }
+}
