@@ -4,13 +4,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDLTEMK7HoWKNE_VYtkBVoFaAc-tcbew8",
+  apiKey: "AIzaSyDLT0MK7H0WKNE_YTvktBVofaAc-tcbew8",
   authDomain: "robo-advisor-prod.firebaseapp.com",
   projectId: "robo-advisor-prod",
   storageBucket: "robo-advisor-prod.firebasestorage.app",
   messagingSenderId: "922125111622",
   appId: "1:922125111622:web:dbf6811f8cc5f8b46f5547",
-  measurementId: "G-H9CSZ2QBSV"
+  measurementId: "G-H9CSZ20BSV"
 };
 
 console.log("🔥 Firebase Initialization Attempt:", {
